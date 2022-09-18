@@ -1,22 +1,38 @@
 import sqlite3
+import sql_func
+import csv
 
-dbname = 'TEST.db'
-conn = sqlite3.connect(dbname)
+dbname = 'db/ANNOTATION.db'
 
-# sqliteを操作するカーソルオブジェクトを作成
-cur = conn.cursor()
+sql = sql_func.AnnotationDB(dbname)
 
-# personsというtableを作成する
-# cur.execute('CREATE TABLE persons(id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING)')
+# テストデータのインサート
+sql.InsertMovies('test',30,1000)
+sql.InsertMovies('test1',20,100)
+sql.InsertMovies('test2',10,10000)
+sql.InsertMovies('test3',40,10)
+sql.InsertMovies('test4',50,10)
+sql.InsertMovies('test5',40,10)
+sql.InsertMovies('test6',70,10)
 
-# "name"に"Taro"を入れる
-cur.execute('INSERT INTO persons(name) values("Taro")')
-cur.execute('INSERT INTO persons(name) values("Hanako")')
-cur.execute('INSERT INTO persons(name) values("Hiroki")')
+sql.InsertSubjects(sql.GetMoviesID('test'),1,'male',True)
+sql.InsertSubjects(sql.GetMoviesID('test'),2,'female',False)
+sql.InsertSubjects(sql.GetMoviesID('test3'),1,'male',True)
+sql.InsertSubjects(sql.GetMoviesID('test3'),2,'male',False)
+sql.InsertSubjects(sql.GetMoviesID('test3'),3,'male',True)
 
+SQL="select id from Annotations where subject_id = 1 and frame = 5"
+if sql.cursor.execute(SQL).fetchone():
+    print(sql.cursor.execute(SQL).fetchone())
 
-# データベースへコミット。これで変更を反映される
-conn.commit()
+SQL="select id from Annotations where subject_id = 1 and frame = 3"
+if sql.cursor.execute(SQL).fetchone():
+    print(sql.cursor.execute(SQL).fetchone())
+# filename = "db/csv/labels.csv"
+# with open(filename, encoding='utf8', newline='') as f:
+#     header = next(f)
+#     csvreader = csv.reader(f)
+#     for row in csvreader:
+#         print(row)
 
-cur.close()
-conn.close()
+sql.Close()
