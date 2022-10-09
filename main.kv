@@ -1,0 +1,222 @@
+# kivyアプリのレイアウトメインファイル
+
+<RootWidget>:
+# Widget:
+    canvas.before:
+        Color:
+            rgb: 0.15,0.15,0.15
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # root Box
+    BoxLayout:
+        size: root.size
+        orientation: 'vertical'
+
+        BoxLayout: # Header Widget
+            id: header
+            size_hint_y: 0.05
+            GridLayout:
+                cols:3
+                rows:1
+                Button:
+                    id: a_btn
+                    text: 'a'
+                    disabled: True
+                Button:
+                    text: 'a'
+                    disabled: True
+                Button:
+                    text: 'a'
+                    disabled: True
+
+
+        BoxLayout: # Main Widget
+            id: Main
+            size_hint_y: 0.95
+            orientation: 'horizontal'
+
+            BoxLayout: # Image Widget
+                id: ImageBox
+                size_hint_x: 0.6
+                orientation: 'vertical'
+
+                BoxLayout: # ImageMainWidget
+                    size_hint_y: 0.6
+                    padding: 5,5,5,0
+                    BoxLayout:
+                        id: image_main
+                        keep_ratio: True
+                        canvas:
+                            Rectangle:
+                                texture: root.texture_main
+                                size: self.size
+                                pos: self.pos
+                        Label:
+                            text_size: self.size
+                            valign: 'center'
+                            halign: 'left'
+                            text: 'right'
+                            color: 'red'
+                        Label:
+                            id: main_frame_label
+                            text_size: self.size
+                            valign: "top"
+                            halign: "center"
+                            text: "-"
+                            color: "red"
+                        Label:
+                            text_size: self.size
+                            valign: 'center'
+                            halign: 'right'
+                            text: 'left'
+                            color: 'red'
+
+                BoxLayout: # ImageList Widget
+                    id: image_list
+                    size_hint_y: 0.2
+                    padding: 5
+
+                    BoxLayout:
+                        GridLayout:
+                            id: image_list_grid
+                            rows:1
+                            cols:5
+                            BoxLayout:
+                                keep_ratio: True
+                            BoxLayout:
+                                keep_ratio: True
+                            BoxLayout:
+                                keep_ratio: True
+                            BoxLayout:
+                                keep_ratio: True
+                            BoxLayout:
+                                keep_ratio: True
+                BoxLayout:
+                    size_hint_y: 0.2
+
+            BoxLayout: # Controll Widget
+                size_hint_x: 0.4
+                orientation: 'vertical'
+
+                BoxLayout:
+                    padding: 0,5,5,0
+                    size_hint_y: 0.05
+                    BoxLayout:
+                        id: table_menu
+
+                BoxLayout:
+                    padding: 0,5,5,5
+                    size_hint_y: 0.05
+                    BoxLayout:
+                        id: scroll_header
+                        canvas:
+                            Color:
+                                rgba: 0.1,0.1,0.1,1
+                            Rectangle:
+                                size: self.size
+                                pos: self.pos
+
+                BoxLayout: # DataBase widget
+                    padding: 0,0,5,0
+                    size_hint_y: 0.45
+                    BoxLayout:
+                        canvas:
+                            Color:
+                                rgba: 0.1,0.1,0.1,1
+                            Rectangle:
+                                size: self.size
+                                pos: self.pos
+                        ScrollView:
+                            id: scroll_list
+                            do_scroll_y: True
+
+                BoxLayout: # LabelList widget
+                    padding: 0,5,5,0
+                    size_hint_y: 0.3
+                    BoxLayout:
+                        id: label_list
+                        canvas:
+                            Color:
+                                rgba: 0.1,0.1,0.1,1
+                            Rectangle:
+                                size: self.size
+                                pos: self.pos
+
+                BoxLayout: # SubjectMenu widget
+                    padding: 0,5,5,0
+                    size_hint_y: 0.15
+                    GridLayout:
+                        rows:2
+                        cols:2
+                        BoxLayout:
+                            padding: 0,0,5,5
+                            BoxLayout:
+                                canvas:
+                                    Color:
+                                        rgba: 0.1,0.1,0.1,1
+                                    Rectangle:
+                                        size: self.size
+                                        pos: self.pos
+                                Label:
+                                    text: 'subject'
+                                Label:
+                                    id: subject_menu_label_id
+                                    text: '-'
+                        BoxLayout:
+                            padding: 0,0,0,5
+                            BoxLayout:
+                                canvas:
+                                    Color:
+                                        rgba: 0.1,0.1,0.1,1
+                                    Rectangle:
+                                        size: self.size
+                                        pos: self.pos
+                                Label:
+                                    id: subject_menu_frame
+                                    text: '-'
+                                Label:
+                                    id: subject_menu_frame_end
+                                    text: '-'
+                        BoxLayout:
+                            padding: 0,0,5,5
+                            BoxLayout:
+                                canvas:
+                                    Color:
+                                        rgba: 0.1,0.1,0.1,1
+                                    Rectangle:
+                                        size: self.size
+                                        pos: self.pos
+                                Label:
+                                    text: 'mode1'
+                                Label:
+                                    id: subject_menu_mode
+                                    text: 'all'
+                        BoxLayout:
+                            padding: 0,0,0,5
+                            BoxLayout:
+                                canvas:
+                                    Color:
+                                        rgba: 0.1,0.1,0.1,1
+                                    Rectangle:
+                                        size: self.size
+                                        pos: self.pos
+                                Label:
+                                    text: 'mode2'
+                                Label:
+                                    id: subject_menu_mode_option2
+                                    text: '単発'
+
+<SubjectRow>:
+    BoxLayout:
+        Label:
+            text: str(self.subject_id)
+        Label:
+            text: str(self.source_name)
+        Label:
+            text: str(self.order_number)
+
+    # Label:
+    #     text: '{}, {}, {}'.format(root.id,root.source_name,root.order_number)
+    # text: 'id: {}, source_name: {}, order_number: {}'.format(root.id,root.source_name,root.order_number)
