@@ -46,5 +46,6 @@ python main.py
 |  -  |  ラベルモード変更2。単発：フレームごとにラベル付け。連続：A,Dの連打でラベル付け。  |
 |  0~6  |  ラベルボタン  |
 
+
 ## ER図
 https://app.diagrams.net/?src=about#Hyunosuke068%2FAnnotationGUI%2Fdevelop%2FER.drawio
