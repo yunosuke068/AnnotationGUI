@@ -164,6 +164,11 @@ class AnnotationDB:
         id = self.cursor.execute(SQL).fetchone()[0]
         return id
 
+    def GetMoviesValuesForTable(self):
+        cur = self.cursor
+        SQL = f"select id, name, frame from Movies"
+        return cur.execute(SQL).fetchall()
+
     """Subjects"""
     # Subjects Table
     # Subjectsのレコードの追加
@@ -191,6 +196,14 @@ class AnnotationDB:
             self.connect.commit()
         else:
             self.InsertSubjects(movie_id,order_number,sex,glasses,path)
+
+    # self.GetSubjectValuesForTable()
+    # return: list in tuple. tuple in (id, movie_id, order_number)
+    # example:  [(1, 1, 1), (2, 1, 2)]
+    def GetSubjectsValuesForTable(self):
+        cur = self.cursor
+        SQL = f"select id, movie_id, order_number from Subjects"
+        return cur.execute(SQL).fetchall()
 
     """Annotations"""
     # Annotations Table
