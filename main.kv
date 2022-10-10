@@ -100,12 +100,14 @@
                 size_hint_x: 0.4
                 orientation: 'vertical'
 
+                # TableMenu Widget
                 BoxLayout:
                     padding: 0,5,5,0
                     size_hint_y: 0.05
                     BoxLayout:
                         id: table_menu
 
+                # ScrollHeader widget
                 BoxLayout:
                     padding: 0,5,5,5
                     size_hint_y: 0.05
@@ -118,7 +120,8 @@
                                 size: self.size
                                 pos: self.pos
 
-                BoxLayout: # DataBase widget
+                # ScrollList widget
+                BoxLayout:
                     padding: 0,0,5,0
                     size_hint_y: 0.45
                     BoxLayout:
@@ -132,7 +135,8 @@
                             id: scroll_list
                             do_scroll_y: True
 
-                BoxLayout: # LabelList widget
+                # LabelList widget
+                BoxLayout:
                     padding: 0,5,5,0
                     size_hint_y: 0.3
                     BoxLayout:
