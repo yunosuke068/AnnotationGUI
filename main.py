@@ -22,6 +22,11 @@ import numpy as np
 #     Builder.load_file(path)
 #     print(f'{path}を読み込みました')
 
+
+movies_path = 'db/source'
+# subjects_path = 'db/Subjects'
+subjects_path = '..\FaceRecognition\split_movie'
+
 dbname = 'db/ANNOTATION.db'
 sql = sql_func.AnnotationDB(dbname)
 
@@ -67,7 +72,7 @@ class RootWidget(Widget):
         self.tables = {} # Subjects, MoviesのGridLayoutWidgetのheaderとtableをdictで管理
 
         # Subjects
-        records = sql.GetRecords('Subjects',['id','name'])
+        records = sql.GetRecords('Subjects',['id','name'],option={'sql_str':'LIMIT 30'})
         header_layout, table_layout = self.Get_Subjects_GridLayout_Widgets(records) # Subjects tableのGridLayoutWidgetを取得
         self.tables['Subjects'] = {'header':header_layout, 'table':table_layout}
 
@@ -502,21 +507,19 @@ class RootWidget(Widget):
 
         self.Update_Image_List_Widget()
 
-
-
 class MainApp(App):
     def __init__(self, **kwargs):
         super(MainApp,self).__init__(**kwargs)
         self.title = "Annotation"
 
         # sourceディレクトリのMovies動画をdbに読み込み
-        for path in glob.glob('db/source/*.mp4'):
+        for path in glob.glob(f'{movies_path}/*.mp4'):
             movie = movie_func.Movie(path)
             source_name = os.path.basename(movie.path).replace('.mp4','')
             sql.UpdateRecords('Movies',{'name':source_name},{'name':source_name,'fps':movie.fps,'frame':movie.frame_count,'path':path})
 
         # SubjectsディレクトリのSubjects動画をdbに読み込み
-        for path in glob.glob('db/Subjects/*.mp4'):
+        for path in glob.glob(f'{subjects_path}/*.mp4'):
             movie = movie_func.Movie(path)
             filename = os.path.basename(movie.path).replace('.mp4','')
             [source_name, order_number] = filename.split('_')
