@@ -15,7 +15,7 @@ from kivy.graphics import Rectangle
 from kivy.lang import Builder
 from kivy.properties import StringProperty,ObjectProperty,BoundedNumericProperty,NumericProperty
 import sql_func, movie_func, my_func
-import glob
+import glob, os
 import numpy as np
 
 # for path in glob.glob('widget/*.kv'):
@@ -25,6 +25,7 @@ import numpy as np
 dbname = 'db/ANNOTATION.db'
 sql = sql_func.AnnotationDB(dbname)
 
+# 適用ボタン用のボタンウィジェット
 class RecordButton(Button):
     value = NumericProperty()
 
@@ -51,26 +52,28 @@ class RootWidget(Widget):
         self.frame = 1 # 現在のframeの管理
 
         # /**選択されているsubject_idの管理**/
-        subject_id = sql.GetFlagSubjectIDLogs() # 前回表示していたsubjctのid取得
-        if subject_id != 0: # 前回表示していたsubjectがある場合
-            self.subject_id = str(subject_id)
+        logs = sql.GetRecords('Logs',['id'],{'flag':1}) # 前回表示していたsubjctのid取得
+        if len(logs) > 0:
+            subject_id = logs[0]['id']
+            if subject_id != 0: # 前回表示していたsubjectがある場合
+                self.subject_id = str(subject_id)
         else:
             self.subject_id = 0
 
 
         # /*******
-        # Subjects, Movies, LabelsのGridLayout用のリストを生成
+        # Subjects, Movies GridLayout用のリストを生成
         # *******/
-        self.tables = {}
+        self.tables = {} # Subjects, MoviesのGridLayoutWidgetのheaderとtableをdictで管理
 
         # Subjects
-        records = [[record[0],sql.GetValueByID('Movies',record[1],'name')[0],record[2]] for record in sql.GetSubjectsValuesForTable()]
-        header_layout, table_layout = self.Get_Subjects_GridLayout_Widgets(records)
+        records = sql.GetRecords('Subjects',['id','name'])
+        header_layout, table_layout = self.Get_Subjects_GridLayout_Widgets(records) # Subjects tableのGridLayoutWidgetを取得
         self.tables['Subjects'] = {'header':header_layout, 'table':table_layout}
 
         # Movies
-        records = [[record[0],record[1],record[2]] for record in sql.GetMoviesValuesForTable()]
-        header_layout, table_layout = self.Get_Movies_GridLayout_Widgets(records)
+        records = sql.GetRecords('Movies',['id','name','frame'])
+        header_layout, table_layout = self.Get_Movies_GridLayout_Widgets(records) # Subjects tableのGridLayoutWidgetを取得
         self.tables['Movies'] = {'header':header_layout, 'table':table_layout}
 
 
@@ -80,8 +83,8 @@ class RootWidget(Widget):
 
         # TableMenuの表示
         tables = sql.GetTables()
-        table_menu_layout = self.Get_Table_Menu_GridLayout_Widget(tables)
-        self.ids['table_menu'].add_widget(table_menu_layout)
+        table_menu_layout = self.Get_Table_Menu_GridLayout_Widget(tables) # TableMenuのGridLayoutWidgetを取得
+        self.ids['table_menu'].add_widget(table_menu_layout) # TableMenuのGridLayoutWidgetを表示
 
         # ScrollHeader, ScrollListの表示
         if self.subject_id != 0: # 前回表示していたsubjct_idがある場合
@@ -186,12 +189,15 @@ class RootWidget(Widget):
         elif move == 'next':
             if self.frame_end > self.frame:
                 self.frame += 1
-        self.Update_Image_Main_Widget(self.frame)
-        sql.UpdateLogs(self.subject_id,self.frame)
+        self.Update_Image_Main_Widget(self.frame) # ImageMainWidgetの画像を現在frameの画像に更新
+
+        # 現在、表示されているsubjectとframeをLogsに保存
+        sql.UpdateRecords('Logs',{'subject_id':self.subject_id},{'frame':self.frame})
+
         self.ids['subject_menu_frame'].text = str(self.frame)
 
-        self.Update_Annotation_Scroll_Widgets()
-        self.Update_Image_List_Widget()
+        self.Update_Annotation_Scroll_Widgets() # Annotation Tableを更新
+        self.Update_Image_List_Widget() # Label Tableを更新
 
         self.ids['main_frame_label'].text = f"frame: {self.frame}"
 
@@ -201,11 +207,11 @@ class RootWidget(Widget):
             self.Update_Label_List_Widget() # LabelList widgetの更新
 
             if self.mode_option1 == 'all':
-                sql.UpdateAnnotationsAll(self.subject_id,label,label,self.frame)
+                sql.UpdateRecords('Annotations',{'subject_id':self.subject_id,'frame':self.frame},{'subject_id':self.subject_id,'frame':self.frame,'right_label_id':label,'left_label_id':label})
             elif self.mode_option1 == 'right':
-                sql.UpdateAnnotationsRight(self.subject_id,label,self.frame)
+                sql.UpdateRecords('Annotations',{'subject_id':self.subject_id,'frame':self.frame},{'subject_id':self.subject_id,'frame':self.frame,'right_label_id':label})
             elif self.mode_option1 == 'left':
-                sql.UpdateAnnotationsLeft(self.subject_id,label,self.frame)
+                sql.UpdateRecords('Annotations',{'subject_id':self.subject_id,'frame':self.frame},{'subject_id':self.subject_id,'frame':self.frame,'left_label_id':label})
 
         self.Update_Annotation_Scroll_Widgets()
 
@@ -267,24 +273,28 @@ class RootWidget(Widget):
     # Label表のheader, tableのlayoutを生成
     def Get_Labels_GridLayout_Widgets(self,records):
         rows = len(records)
+        cols = records[0].keys()
         # header
-        header_layout = GridLayout(cols=2)
-        for col_name in ['id','name']:
+        header_layout = GridLayout(cols=len(cols))
+        for col_name in cols:
             header_layout.add_widget(Label(text=col_name))
         # tables
-        table_layout = GridLayout(cols=2,rows=rows)
+        table_layout = GridLayout(cols=len(cols),rows=rows)
         for record in records:
-            if record[0] == self.label_number:
-                for value in record:
+            if record['id'] == self.label_number:
+                for value in record.values():
                     table_layout.add_widget(Label(text=str(value),color='green'))
             else:
-                for value in record:
+                for value in record.values():
                     table_layout.add_widget(Label(text=str(value)))
         return header_layout, table_layout
 
     # Movie表のheader, tableのlayoutを生成
     def Get_Movies_GridLayout_Widgets(self,records,rows=30):
-        cols = ['id','name','frame']
+        if len(records) > 0:
+            cols = list(records[0].keys())
+        else:
+            cols = ['id']
         # header
         header_layout = GridLayout(cols=len(cols))
         for col_name in cols:
@@ -292,7 +302,7 @@ class RootWidget(Widget):
         # tables
         table_layout = GridLayout(cols=len(cols),rows=rows,size_hint_y=None,row_default_height=30, height=30*rows)
         for record in records:
-            for value in record:
+            for value in record.values():
                 table_layout.add_widget(Label(text=str(value)))
         for _ in range(rows-len(records)):
             for __ in cols:
@@ -301,16 +311,20 @@ class RootWidget(Widget):
 
     # Subject表のheader, tableのlayoutを生成
     def Get_Subjects_GridLayout_Widgets(self,records,rows=30):
-        cols = ['id','name','number','accept']
+        if len(records) > 0:
+            cols = list(records[0].keys())
+        else:
+            cols = ['id']
+        cols.append('accept')
         # header
-        header_layout = GridLayout(cols=len(cols))
+        header_layout = GridLayout(cols=len(cols)) # GridLayoutウィジェットのインスタンスを作成
         for col in cols:
             header_layout.add_widget(Label(text=col))
         layout = GridLayout(cols=len(cols),rows=rows,size_hint_y=None,row_default_height=30, height=30*rows)
         for record in records:
-            for value in record:
+            for value in record.values():
                 layout.add_widget(Label(text=str(value)))
-            button = RecordButton(value=record[0])
+            button = RecordButton(value=record['id'])
             button.bind(on_press=self.Subject_List_Button_Clicked)
             layout.add_widget(button)
         for _ in range(rows-len(records)):
@@ -388,8 +402,8 @@ class RootWidget(Widget):
     # AnnotationsのScroll_Header, Scroll_List Widgetsの更新
     def Update_Annotation_Scroll_Widgets(self):
         # Annotaionsのテーブル用データの登録
-        records,flag = sql.GetAnnotationsBySubjectID(self.subject_id)
-        records = [[record[4],record[2],record[3]] for record in records]
+        records = sql.GetRecords('Annotations',['frame','right_label_id','left_label_id'],{'subject_id':self.subject_id},option={'sql_str':f'AND frame < {self.frame + 10} AND frame > {self.frame - 10} ORDER BY frame LIMIT 30'})
+        records = [[record['frame'],record['right_label_id'],record['left_label_id']] for record in records]
         header_layout, table_layout = self.Get_Annotations_GridLayout_Widgets(records)
         self.tables['Annotations'] = {'header':header_layout, 'table':table_layout}
 
@@ -430,22 +444,25 @@ class RootWidget(Widget):
 
             # /**ImageList widgetの画像にframe番号とlabel番号を表示**/
             self.ids['image_list_grid'].children[i].clear_widgets() # Label widgetを削除
-            labels = sql.GetAnnotationsRecord(self.subject_id,frame)
-
-            label_widget = Label(text=str(labels[0]),color='red',valign='bottom',halign='left',text_size=(10,40))
+            labels = sql.GetRecords('Annotations',['right_label_id','left_label_id'],{'subject_id':self.subject_id,'frame':frame},{'sql_str':'LIMIT 5'})
+            if len(labels) == 0:
+                label = {'right_label_id':'-','left_label_id':'-'}
+            else:
+                label = labels[0]
+            label_widget = Label(text=str(label['left_label_id']),color='red',valign='bottom',halign='left',text_size=(10,40))
             self.ids['image_list_grid'].children[i].add_widget(label_widget)
 
             label_widget = Label(text=str(frame),color='red')
             self.ids['image_list_grid'].children[i].add_widget(label_widget)
 
-            label_widget = Label(text=str(labels[1]),color='red',valign='bottom',halign='right',text_size=(10,40))
+            label_widget = Label(text=str(label['right_label_id']),color='red',valign='bottom',halign='right',text_size=(10,40))
             self.ids['image_list_grid'].children[i].add_widget(label_widget)
 
             frame += 1
 
     # LabelList Widgetの更新。self.label_numberの番号のラベルがハイライトされる。
     def Update_Label_List_Widget(self):
-        records = [[record[0],record[1]] for record in sql.GetAllValuesByTable('Labels')]
+        records = sql.GetRecords('Labels',['id','name'])
         header_layout, table_layout = self.Get_Labels_GridLayout_Widgets(records)
         self.tables['Labels'] = {'header':header_layout, 'table':table_layout}
         self.ids['label_list'].clear_widgets()
@@ -460,24 +477,25 @@ class RootWidget(Widget):
         self.ids['subject_menu_label_id'].text = self.subject_id = subject_id
         self.ids['Annotations_menu'].disabled = False
 
-        self.SubjectMovie = movie_func.Movie(sql.GetValueByID('Subjects',self.subject_id,'path')[0])
+        sr = sql.GetRecords('Subjects',['path'],{'id':subject_id})[0]
+        self.SubjectMovie = movie_func.Movie(sr['path'])
 
         # ImageMainWidgetに画像を表示
-        records = sql.GetRecordsByValue("Logs","subject_id",self.subject_id)
+        records = sql.GetRecords('Logs',['frame'],{'subject_id':self.subject_id},{'sql_str':'LIMIT 1'})
         if records:
-            self.frame = records[0][2]
+            self.frame = records[0]['frame']
         else:
             self.frame = 1
-            sql.UpdateLogs(self.subject_id,self.frame)
+            sql.UpdateRecords('Logs',{'subject_id':self.subject_id},{'subject_id':subject_id,'frame':self.frame})
         self.Update_Image_Main_Widget(self.frame)
-
-        sql.UpdateLogsFlag(self.subject_id)
+        
+        sql.cursor.execute("UPDATE Logs SET flag = 0")
+        sql.UpdateRecords('Logs',{'subject_id':self.subject_id},{'subject_id':subject_id,'flag':1})
 
         # Annotaionsのテーブル用データの登録
         self.Update_Annotation_Scroll_Widgets()
 
         # Subjectの最後のフレーム番号を取得
-        records = sql.GetRecordsByValue("Subjects","id",self.subject_id)
         self.frame_end = self.SubjectMovie.frame_count
         self.ids['subject_menu_frame'].text = str(self.frame)
         self.ids['subject_menu_frame_end'].text = str(int(self.frame_end))
@@ -490,6 +508,19 @@ class MainApp(App):
     def __init__(self, **kwargs):
         super(MainApp,self).__init__(**kwargs)
         self.title = "Annotation"
+
+        # sourceディレクトリのMovies動画をdbに読み込み
+        for path in glob.glob('db/source/*.mp4'):
+            movie = movie_func.Movie(path)
+            source_name = os.path.basename(movie.path).replace('.mp4','')
+            sql.UpdateRecords('Movies',{'name':source_name},{'name':source_name,'fps':movie.fps,'frame':movie.frame_count,'path':path})
+
+        # SubjectsディレクトリのSubjects動画をdbに読み込み
+        for path in glob.glob('db/Subjects/*.mp4'):
+            movie = movie_func.Movie(path)
+            filename = os.path.basename(movie.path).replace('.mp4','')
+            [source_name, order_number] = filename.split('_')
+            sql.UpdateRecords('Subjects',{'name':filename},{'name':filename,'fps':movie.fps,'frame':movie.frame_count,'path':path})
 
     def build(self):
         return RootWidget()
