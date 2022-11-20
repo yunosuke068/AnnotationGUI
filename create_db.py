@@ -11,13 +11,13 @@ sql = sql_func.AnnotationDB(dbname)
 for path in glob.glob('db/source/*.mp4'):
     movie = movie_func.Movie(path)
     source_name = os.path.basename(movie.path).replace('.mp4','')
-    sql.UpdateMovies(source_name,movie.fps,movie.frame_count,movie.path)
+    sql.UpdateRecords('Movies',{'name':source_name},{'name':source_name,'fps':movie.fps,'frame':movie.frame_count,'path':path})
 
 for path in glob.glob('db/Subjects/*.mp4'):
     movie = movie_func.Movie(path)
     filename = os.path.basename(movie.path).replace('.mp4','')
     [source_name, order_number] = filename.split('_')
-    sql.UpdateSubjects(sql.GetMoviesID(source_name),order_number,'',False,movie.path)
+    sql.UpdateRecords('Subjects',{'name':filename},{'name':filename,'fps':movie.fps,'frame':movie.frame_count,'path':path})
 
 
 
