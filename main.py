@@ -192,7 +192,10 @@ class RootWidget(Widget):
             if self.frame_end > self.frame:
                 self.frame += 1
         self.Update_Image_Main_Widget(self.frame)
-        sql.UpdateLogs(self.subject_id,self.frame)
+
+        # sql.UpdateLogs(self.subject_id,self.frame)
+        sql.UpdateRecords('Logs',{'subject_id':self.subject_id},{'frame':self.frame})
+
         self.ids['subject_menu_frame'].text = str(self.frame)
 
         self.Update_Annotation_Scroll_Widgets()
@@ -206,11 +209,14 @@ class RootWidget(Widget):
             self.Update_Label_List_Widget() # LabelList widgetの更新
 
             if self.mode_option1 == 'all':
-                sql.UpdateAnnotationsAll(self.subject_id,label,label,self.frame)
+                # sql.UpdateAnnotationsAll(self.subject_id,label,label,self.frame)
+                sql.UpdateRecords('Annotations',{'subject_id':self.subject_id,'frame':self.frame},{'subject_id':self.subject_id,'frame':self.frame,'right_label_id':label,'left_label_id':label})
             elif self.mode_option1 == 'right':
-                sql.UpdateAnnotationsRight(self.subject_id,label,self.frame)
+                # sql.UpdateAnnotationsRight(self.subject_id,label,self.frame)
+                sql.UpdateRecords('Annotations',{'subject_id':self.subject_id,'frame':self.frame},{'subject_id':self.subject_id,'frame':self.frame,'right_label_id':label})
             elif self.mode_option1 == 'left':
-                sql.UpdateAnnotationsLeft(self.subject_id,label,self.frame)
+                # sql.UpdateAnnotationsLeft(self.subject_id,label,self.frame)
+                sql.UpdateRecords('Annotations',{'subject_id':self.subject_id,'frame':self.frame},{'subject_id':self.subject_id,'frame':self.frame,'left_label_id':label})
 
         self.Update_Annotation_Scroll_Widgets()
 
@@ -403,8 +409,9 @@ class RootWidget(Widget):
     # AnnotationsのScroll_Header, Scroll_List Widgetsの更新
     def Update_Annotation_Scroll_Widgets(self):
         # Annotaionsのテーブル用データの登録
-        records,flag = sql.GetAnnotationsBySubjectID(self.subject_id)
-        records = [[record[4],record[2],record[3]] for record in records]
+        # records,flag = sql.GetAnnotationsBySubjectID(self.subject_id)
+        records = sql.GetRecords('Annotations',['frame','right_label_id','left_label_id'],{'subject_id':self.subject_id},option={'sql_str':f'AND frame < {self.frame + 10} AND frame > {self.frame - 10} ORDER BY frame LIMIT 30'})
+        records = [[record['frame'],record['right_label_id'],record['left_label_id']] for record in records]
         header_layout, table_layout = self.Get_Annotations_GridLayout_Widgets(records)
         self.tables['Annotations'] = {'header':header_layout, 'table':table_layout}
 
@@ -445,15 +452,19 @@ class RootWidget(Widget):
 
             # /**ImageList widgetの画像にframe番号とlabel番号を表示**/
             self.ids['image_list_grid'].children[i].clear_widgets() # Label widgetを削除
-            labels = sql.GetAnnotationsRecord(self.subject_id,frame)
-
-            label_widget = Label(text=str(labels[0]),color='red',valign='bottom',halign='left',text_size=(10,40))
+            # labels = sql.GetAnnotationsRecord(self.subject_id,frame)
+            labels = sql.GetRecords('Annotations',['right_label_id','left_label_id'],{'subject_id':self.subject_id,'frame':frame},{'sql_str':'LIMIT 5'})
+            if len(labels) == 0:
+                label = {'right_label_id':'-','left_label_id':'-'}
+            else:
+                label = labels[0]
+            label_widget = Label(text=str(label['left_label_id']),color='red',valign='bottom',halign='left',text_size=(10,40))
             self.ids['image_list_grid'].children[i].add_widget(label_widget)
 
             label_widget = Label(text=str(frame),color='red')
             self.ids['image_list_grid'].children[i].add_widget(label_widget)
 
-            label_widget = Label(text=str(labels[1]),color='red',valign='bottom',halign='right',text_size=(10,40))
+            label_widget = Label(text=str(label['right_label_id']),color='red',valign='bottom',halign='right',text_size=(10,40))
             self.ids['image_list_grid'].children[i].add_widget(label_widget)
 
             frame += 1
@@ -476,24 +487,30 @@ class RootWidget(Widget):
         self.ids['subject_menu_label_id'].text = self.subject_id = subject_id
         self.ids['Annotations_menu'].disabled = False
 
-        self.SubjectMovie = movie_func.Movie(sql.GetValueByID('Subjects',self.subject_id,'path')[0])
+        # self.SubjectMovie = movie_func.Movie(sql.GetValueByID('Subjects',self.subject_id,'path')[0])
+        print(subject_id)
+        sr = sql.GetRecords('Subjects',['path'],{'id':subject_id})[0]
+        self.SubjectMovie = movie_func.Movie(sr['path'])
 
         # ImageMainWidgetに画像を表示
-        records = sql.GetRecordsByValue("Logs","subject_id",self.subject_id)
+        # records = sql.GetRecordsByValue("Logs","subject_id",self.subject_id)
+        records = sql.GetRecords('Logs',['frame'],{'subject_id':self.subject_id},{'sql_str':'LIMIT 1'})
         if records:
-            self.frame = records[0][2]
+            self.frame = records[0]['frame']
         else:
             self.frame = 1
-            sql.UpdateLogs(self.subject_id,self.frame)
+            # sql.UpdateLogs(self.subject_id,self.frame)
+            sql.UpdateRecords('Logs',{'subject_id':self.subject_id},{'subject_id':subject_id,'frame':self.frame})
         self.Update_Image_Main_Widget(self.frame)
 
-        sql.UpdateLogsFlag(self.subject_id)
+        # sql.UpdateLogsFlag(self.subject_id)
+        sql.cursor.execute("UPDATE Logs SET flag = 0")
+        sql.UpdateRecords('Logs',{'subject_id':self.subject_id},{'subject_id':subject_id,'flag':1})
 
         # Annotaionsのテーブル用データの登録
         self.Update_Annotation_Scroll_Widgets()
 
         # Subjectの最後のフレーム番号を取得
-        records = sql.GetRecordsByValue("Subjects","id",self.subject_id)
         self.frame_end = self.SubjectMovie.frame_count
         self.ids['subject_menu_frame'].text = str(self.frame)
         self.ids['subject_menu_frame_end'].text = str(int(self.frame_end))
