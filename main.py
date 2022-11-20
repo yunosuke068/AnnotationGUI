@@ -15,7 +15,7 @@ from kivy.graphics import Rectangle
 from kivy.lang import Builder
 from kivy.properties import StringProperty,ObjectProperty,BoundedNumericProperty,NumericProperty
 import sql_func, movie_func, my_func
-import glob
+import glob, os
 import numpy as np
 
 # for path in glob.glob('widget/*.kv'):
@@ -51,9 +51,12 @@ class RootWidget(Widget):
         self.frame = 1 # 現在のframeの管理
 
         # /**選択されているsubject_idの管理**/
-        subject_id = sql.GetFlagSubjectIDLogs() # 前回表示していたsubjctのid取得
-        if subject_id != 0: # 前回表示していたsubjectがある場合
-            self.subject_id = str(subject_id)
+        # subject_id = sql.GetFlagSubjectIDLogs() # 前回表示していたsubjctのid取得
+        logs = sql.GetRecords('Logs',['id'],{'flag':1})
+        if len(logs) > 0:
+            subject_id = logs[0]['id']
+            if subject_id != 0: # 前回表示していたsubjectがある場合
+                self.subject_id = str(subject_id)
         else:
             self.subject_id = 0
 
@@ -64,12 +67,14 @@ class RootWidget(Widget):
         self.tables = {}
 
         # Subjects
-        records = [[record[0],sql.GetValueByID('Movies',record[1],'name')[0],record[2]] for record in sql.GetSubjectsValuesForTable()]
+        # records = [[record[0],sql.GetValueByID('Movies',record[1],'name')[0],record[2]] for record in sql.GetSubjectsValuesForTable()]
+        records = sql.GetRecords('Subjects',['id','name'])
         header_layout, table_layout = self.Get_Subjects_GridLayout_Widgets(records)
         self.tables['Subjects'] = {'header':header_layout, 'table':table_layout}
 
         # Movies
-        records = [[record[0],record[1],record[2]] for record in sql.GetMoviesValuesForTable()]
+        # records = [[record[0],record[1],record[2]] for record in sql.GetMoviesValuesForTable()]
+        records = sql.GetRecords('Movies',['id','name','frame'])
         header_layout, table_layout = self.Get_Movies_GridLayout_Widgets(records)
         self.tables['Movies'] = {'header':header_layout, 'table':table_layout}
 
@@ -267,24 +272,29 @@ class RootWidget(Widget):
     # Label表のheader, tableのlayoutを生成
     def Get_Labels_GridLayout_Widgets(self,records):
         rows = len(records)
+        cols = records[0].keys()
         # header
-        header_layout = GridLayout(cols=2)
-        for col_name in ['id','name']:
+        header_layout = GridLayout(cols=len(cols))
+        for col_name in cols:
             header_layout.add_widget(Label(text=col_name))
         # tables
-        table_layout = GridLayout(cols=2,rows=rows)
+        table_layout = GridLayout(cols=len(cols),rows=rows)
         for record in records:
-            if record[0] == self.label_number:
-                for value in record:
+            if record['id'] == self.label_number:
+                for value in record.values():
                     table_layout.add_widget(Label(text=str(value),color='green'))
             else:
-                for value in record:
+                for value in record.values():
                     table_layout.add_widget(Label(text=str(value)))
         return header_layout, table_layout
 
     # Movie表のheader, tableのlayoutを生成
     def Get_Movies_GridLayout_Widgets(self,records,rows=30):
-        cols = ['id','name','frame']
+        # cols = ['id','name','frame']
+        if len(records) > 0:
+            cols = list(records[0].keys())
+        else:
+            cols = ['id']
         # header
         header_layout = GridLayout(cols=len(cols))
         for col_name in cols:
@@ -292,7 +302,7 @@ class RootWidget(Widget):
         # tables
         table_layout = GridLayout(cols=len(cols),rows=rows,size_hint_y=None,row_default_height=30, height=30*rows)
         for record in records:
-            for value in record:
+            for value in record.values():
                 table_layout.add_widget(Label(text=str(value)))
         for _ in range(rows-len(records)):
             for __ in cols:
@@ -301,16 +311,21 @@ class RootWidget(Widget):
 
     # Subject表のheader, tableのlayoutを生成
     def Get_Subjects_GridLayout_Widgets(self,records,rows=30):
-        cols = ['id','name','number','accept']
+        # cols = ['id','name','number','accept']
+        if len(records) > 0:
+            cols = list(records[0].keys())
+        else:
+            cols = ['id']
+        cols.append('accept')
         # header
-        header_layout = GridLayout(cols=len(cols))
+        header_layout = GridLayout(cols=len(cols)) # GridLayoutウィジェットのインスタンスを作成
         for col in cols:
             header_layout.add_widget(Label(text=col))
         layout = GridLayout(cols=len(cols),rows=rows,size_hint_y=None,row_default_height=30, height=30*rows)
         for record in records:
-            for value in record:
+            for value in record.values():
                 layout.add_widget(Label(text=str(value)))
-            button = RecordButton(value=record[0])
+            button = RecordButton(value=record['id'])
             button.bind(on_press=self.Subject_List_Button_Clicked)
             layout.add_widget(button)
         for _ in range(rows-len(records)):
@@ -445,7 +460,8 @@ class RootWidget(Widget):
 
     # LabelList Widgetの更新。self.label_numberの番号のラベルがハイライトされる。
     def Update_Label_List_Widget(self):
-        records = [[record[0],record[1]] for record in sql.GetAllValuesByTable('Labels')]
+        # records = [[record[0],record[1]] for record in sql.GetAllValuesByTable('Labels')]
+        records = sql.GetRecords('Labels',['id','name'])
         header_layout, table_layout = self.Get_Labels_GridLayout_Widgets(records)
         self.tables['Labels'] = {'header':header_layout, 'table':table_layout}
         self.ids['label_list'].clear_widgets()
@@ -490,6 +506,19 @@ class MainApp(App):
     def __init__(self, **kwargs):
         super(MainApp,self).__init__(**kwargs)
         self.title = "Annotation"
+
+        # sourceディレクトリのMovies動画をdbに読み込み
+        for path in glob.glob('db/source/*.mp4'):
+            movie = movie_func.Movie(path)
+            source_name = os.path.basename(movie.path).replace('.mp4','')
+            sql.UpdateRecords('Movies',{'name':source_name},{'name':source_name,'fps':movie.fps,'frame':movie.frame_count,'path':path})
+
+        # SubjectsディレクトリのSubjects動画をdbに読み込み
+        for path in glob.glob('db/Subjects/*.mp4'):
+            movie = movie_func.Movie(path)
+            filename = os.path.basename(movie.path).replace('.mp4','')
+            [source_name, order_number] = filename.split('_')
+            sql.UpdateRecords('Subjects',{'name':filename},{'name':filename,'fps':movie.fps,'frame':movie.frame_count,'path':path})
 
     def build(self):
         return RootWidget()
